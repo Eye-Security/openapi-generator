@@ -27,6 +27,8 @@ import (
 	"golang.org/x/oauth2"
 	{{/hasOAuthMethods}}
 	{{#withAWSV4Signature}}
+	"crypto/sha256"
+	"encoding/hex"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	{{/withAWSV4Signature}}
@@ -477,8 +479,26 @@ func (c *APIClient) prepareRequest(
 				return nil, err
 			}
 
-			// Sign the request (empty string tells signer to compute payload hash automatically)
-			err = signer.SignHTTP(ctx, creds, localVarRequest, "", service, region, time.Now())
+			// Compute payload hash
+			var payloadHash string
+			if localVarRequest.Body != nil {
+				// Read the body content
+				bodyBytes, err := io.ReadAll(localVarRequest.Body)
+				if err != nil {
+					return nil, err
+				}
+				// Restore the body for the actual request
+				localVarRequest.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+				// Compute SHA-256 hash of the body
+				hash := sha256.Sum256(bodyBytes)
+				payloadHash = hex.EncodeToString(hash[:])
+			} else {
+				// Use empty string hash for requests with no payload
+				payloadHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+			}
+
+			// Sign the request with the computed payload hash
+			err = signer.SignHTTP(ctx, creds, localVarRequest, payloadHash, service, region, time.Now())
 			if err != nil {
 				return nil, err
 			}
