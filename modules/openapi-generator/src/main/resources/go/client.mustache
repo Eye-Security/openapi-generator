@@ -27,7 +27,6 @@ import (
 	"golang.org/x/oauth2"
 	{{/hasOAuthMethods}}
 	{{#withAWSV4Signature}}
-	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	{{/withAWSV4Signature}}
@@ -459,7 +458,7 @@ func (c *APIClient) prepareRequest(
 		{{#withAWSV4Signature}}
 		// AWS Signature v4 Authentication
 		if auth, ok := ctx.Value(ContextAWSv4).(AWSv4); ok {
-			creds := credentials.NewStaticCredentialsProvider(auth.AccessKey, auth.SecretKey, auth.SessionToken)
+			credsProvider := credentials.NewStaticCredentialsProvider(auth.AccessKey, auth.SecretKey, auth.SessionToken)
 			signer := v4.NewSigner()
 			
 			// Define default values for region and service to maintain backward compatibility
@@ -472,14 +471,14 @@ func (c *APIClient) prepareRequest(
 				service = "oapi"
 			}
 
-			// Create AWS config with credentials
-			cfg := aws.Config{
-				Region:      region,
-				Credentials: creds,
+			// Retrieve credentials from provider
+			creds, err := credsProvider.Retrieve(ctx)
+			if err != nil {
+				return nil, err
 			}
 
-			// Sign the request
-			err := signer.SignHTTP(ctx, cfg.Credentials, localVarRequest, "", service, region, time.Now())
+			// Sign the request (empty string tells signer to compute payload hash automatically)
+			err = signer.SignHTTP(ctx, creds, localVarRequest, "", service, region, time.Now())
 			if err != nil {
 				return nil, err
 			}
