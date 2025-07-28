@@ -471,14 +471,21 @@ func (c *APIClient) prepareRequest(
 				service = "oapi"
 			}
 
-			// Retrieve credentials from provider
-			creds, err := credsProvider.Retrieve(ctx)
-			if err != nil {
-				return nil, err
+			// Compute payload hash from the request body
+			var payloadHash string
+			if body == nil {
+				// Empty body
+				hash := sha256.Sum256([]byte(""))
+				payloadHash = hex.EncodeToString(hash[:])
+			} else {
+				// Hash the actual body content
+				bodyBytes := []byte(body.String())
+				hash := sha256.Sum256(bodyBytes)
+				payloadHash = hex.EncodeToString(hash[:])
 			}
 
-			// Sign the request (empty string tells signer to compute payload hash automatically)
-			err = signer.SignHTTP(ctx, creds, localVarRequest, "", service, region, time.Now())
+			// Sign the request with the computed payload hash
+			err = signer.SignHTTP(ctx, creds, localVarRequest, payloadHash, service, region, time.Now())
 			if err != nil {
 				return nil, err
 			}
