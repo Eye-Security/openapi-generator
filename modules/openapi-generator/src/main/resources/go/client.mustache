@@ -28,7 +28,7 @@ import (
 	{{/hasOAuthMethods}}
 	{{#withAWSV4Signature}}
 	awsv4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	"github.com/aws/aws-sdk-go-v2/credentials"
+		awscredentials "github.com/aws/aws-sdk-go-v2/credentials"
 	{{/withAWSV4Signature}}
 )
 
@@ -458,7 +458,7 @@ func (c *APIClient) prepareRequest(
 		{{#withAWSV4Signature}}
 		// AWS Signature v4 Authentication
 		if auth, ok := ctx.Value(ContextAWSv4).(AWSv4); ok {
-			credsProvider := credentials.NewStaticCredentialsProvider(auth.AccessKey, auth.SecretKey, auth.SessionToken)
+			credsProvider := awscredentials.NewStaticCredentialsProvider(auth.AccessKey, auth.SecretKey, auth.SessionToken)
 			signer := awsv4.NewSigner()
 			
 			// Define default values for region and service to maintain backward compatibility
